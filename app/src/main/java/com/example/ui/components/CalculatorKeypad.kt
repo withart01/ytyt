@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,7 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -64,6 +70,7 @@ fun CalculatorKeypad(
     modifier: Modifier = Modifier
 ) {
     var customItemName by remember { mutableStateOf("") }
+    var showItemNameField by remember { mutableStateOf(false) }
     val displayAmount = displayValue.toLongOrNull() ?: 0L
 
     Column(
@@ -72,40 +79,167 @@ fun CalculatorKeypad(
             .testTag("calculator_keypad_container"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Display Card
+        // Modern Terminal Display Card with gradient & glowing border
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            )
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF0F766E).copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(18.dp)
+                ),
+            shape = RoundedCornerShape(18.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF0F172A), // Slate 900
+                                Color(0xFF1E293B)  // Slate 800
+                            )
+                        )
+                    )
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF0F766E).copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                text = "TERMINAL KASIR",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2DD4BF),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        if (expression.isNotBlank()) {
+                            Text(
+                                text = expression,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color(0xFF94A3B8),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = "IDR",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = EscPosHelper.formatRupiah(displayAmount),
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF34D399), // Neon mint
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            }
+        }
+
+        // Optional Custom Item Name Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { showItemNameField = !showItemNameField }
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (customItemName.isBlank()) "+ Beri Nama Item (Opsional)" else "Item: $customItemName",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            if (customItemName.isNotBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.clickable { customItemName = "" }
+                ) {
+                    Text("Hapus", fontSize = 10.sp, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+            }
+        }
+
+        AnimatedVisibility(visible = showItemNameField) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalAlignment = Alignment.End
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
-                if (expression.isNotBlank()) {
-                    Text(
-                        text = expression,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = EscPosHelper.formatRupiah(displayAmount),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                OutlinedTextField(
+                    value = customItemName,
+                    onValueChange = { customItemName = it },
+                    placeholder = { Text("Contoh: Nasi Bungkus, Jasa Servis", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp)
                 )
+
+                // Quick item presets
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("Menu Khusus", "Jasa", "Tambahan", "Paket Custom").forEach { preset ->
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.clickable { customItemName = preset }
+                        ) {
+                            Text(
+                                text = preset,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -126,17 +260,18 @@ fun CalculatorKeypad(
             ).forEach { (amt, label) ->
                 Surface(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable { onDenomination(amt) }
                         .testTag("denom_chip_$label"),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(20.dp)
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                    shape = RoundedCornerShape(16.dp),
+                    tonalElevation = 2.dp
                 ) {
                     Text(
                         text = label,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 6.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
@@ -145,12 +280,12 @@ fun CalculatorKeypad(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Keypad Grid
+        // High-Contrast Tactile Keypad Grid
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             // Row 1: C, Backspace, ÷, ×
             Row(
@@ -160,8 +295,8 @@ fun CalculatorKeypad(
                 CalcButton(
                     text = "C",
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    textColor = MaterialTheme.colorScheme.onErrorContainer,
+                    color = Color(0xFFFEE2E2),
+                    textColor = Color(0xFFDC2626),
                     onClick = onClear
                 )
                 CalcIconButton(
@@ -173,15 +308,15 @@ fun CalculatorKeypad(
                 CalcButton(
                     text = "÷",
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = Color(0xFFFEF3C7),
+                    textColor = Color(0xFFB45309),
                     onClick = { onOperator("÷") }
                 )
                 CalcButton(
                     text = "×",
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = Color(0xFFFEF3C7),
+                    textColor = Color(0xFFB45309),
                     onClick = { onOperator("×") }
                 )
             }
@@ -197,8 +332,8 @@ fun CalculatorKeypad(
                 CalcButton(
                     text = "-",
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = Color(0xFFFEF3C7),
+                    textColor = Color(0xFFB45309),
                     onClick = { onOperator("-") }
                 )
             }
@@ -214,8 +349,8 @@ fun CalculatorKeypad(
                 CalcButton(
                     text = "+",
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = Color(0xFFFEF3C7),
+                    textColor = Color(0xFFB45309),
                     onClick = { onOperator("+") }
                 )
             }
@@ -232,7 +367,7 @@ fun CalculatorKeypad(
                     text = "=",
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.primary,
-                    textColor = MaterialTheme.colorScheme.onPrimary,
+                    textColor = Color.White,
                     onClick = onEquals
                 )
             }
@@ -261,9 +396,9 @@ fun CalculatorKeypad(
                 onClick = { onAddToCart(customItemName) },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(50.dp)
                     .testTag("add_calc_to_cart_btn"),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp)
             ) {
                 Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
@@ -274,16 +409,17 @@ fun CalculatorKeypad(
                 onClick = onQuickPay,
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(50.dp)
                     .testTag("quick_pay_btn"),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
-                )
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
             ) {
                 Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Bayar Cepat", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Bayar Cepat", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     }
@@ -299,13 +435,14 @@ private fun CalcButton(
 ) {
     Surface(
         modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .height(50.dp)
+            .clip(RoundedCornerShape(13.dp))
             .clickable(onClick = onClick)
             .testTag("calc_btn_$text"),
         color = color,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 2.dp
+        shape = RoundedCornerShape(13.dp),
+        tonalElevation = 2.dp,
+        shadowElevation = 1.dp
     ) {
         Box(
             modifier = Modifier.fillMaxWidth(),
@@ -331,13 +468,14 @@ private fun CalcIconButton(
 ) {
     Surface(
         modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .height(50.dp)
+            .clip(RoundedCornerShape(13.dp))
             .clickable(onClick = onClick)
             .testTag("calc_icon_btn"),
         color = color,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 2.dp
+        shape = RoundedCornerShape(13.dp),
+        tonalElevation = 2.dp,
+        shadowElevation = 1.dp
     ) {
         Box(
             modifier = Modifier.fillMaxWidth(),

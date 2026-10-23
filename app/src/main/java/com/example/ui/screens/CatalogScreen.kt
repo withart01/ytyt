@@ -1,6 +1,11 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -76,16 +81,23 @@ fun CatalogScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search Bar
+            // Sleek Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                placeholder = { Text("Cari produk atau menu...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                placeholder = { Text("Cari produk atau menu...", fontSize = 13.sp) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Hapus")
+                            Icon(Icons.Default.Close, contentDescription = "Hapus", modifier = Modifier.size(18.dp))
                         }
                     }
                 },
@@ -93,11 +105,11 @@ fun CatalogScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp)
                     .testTag("catalog_search_input"),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 singleLine = true
             )
 
-            // Category Pills
+            // Modern Category Pills
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -109,18 +121,19 @@ fun CatalogScreen(
                     val isSelected = selectedCategory == cat
                     Surface(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .clickable { onCategorySelect(cat) }
                             .testTag("category_chip_$cat"),
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        tonalElevation = if (isSelected) 3.dp else 0.dp
                     ) {
                         Text(
                             text = cat,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -134,16 +147,25 @@ fun CatalogScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Tidak ada produk yang cocok",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Tidak ada produk yang cocok",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Gunakan tombol + untuk menambah menu baru",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier
@@ -193,11 +215,24 @@ private fun ProductGridItem(
     inCartCount: Int,
     onAdd: () -> Unit
 ) {
+    val categoryColor = when (product.category.lowercase()) {
+        "makanan" -> Color(0xFFDC2626) // Red/Rose
+        "minuman" -> Color(0xFF0F766E) // Teal
+        "snack" -> Color(0xFFD97706)   // Amber
+        "paket" -> Color(0xFF7C3AED)   // Violet
+        else -> Color(0xFF475569)      // Slate
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onAdd)
+            .border(
+                width = 1.dp,
+                color = if (inCartCount > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(16.dp)
+            )
             .testTag("product_item_${product.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -211,21 +246,21 @@ private fun ProductGridItem(
                     .fillMaxWidth()
                     .padding(12.dp)
             ) {
-                // Category Tag
+                // Top Category Pill
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    color = categoryColor.copy(alpha = 0.12f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = product.category,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        fontWeight = FontWeight.Bold,
+                        color = categoryColor
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = product.name,
@@ -240,45 +275,59 @@ private fun ProductGridItem(
 
                 Text(
                     text = EscPosHelper.formatRupiah(product.price),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
-                    onClick = onAdd,
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (inCartCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(34.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(onClick = onAdd)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("+ Tambah", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp),
+                            tint = if (inCartCount > 0) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (inCartCount > 0) "Tambah Lagi" else "Pilih",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (inCartCount > 0) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
 
             // In-Cart Badge
             if (inCartCount > 0) {
                 Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 3.dp,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
+                        .padding(8.dp)
                 ) {
                     Text(
                         text = "$inCartCount",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                     )
                 }
@@ -299,16 +348,17 @@ fun AddProductDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(22.dp),
             color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth(0.95f)
+            modifier = Modifier.fillMaxWidth(0.95f),
+            tonalElevation = 6.dp
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Tambah Produk Baru",
+                    text = "Tambah Menu / Produk Baru",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -317,22 +367,26 @@ fun AddProductDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nama Produk / Menu") },
+                    label = { Text("Nama Menu / Produk") },
+                    placeholder = { Text("Contoh: Es Kopi Gula Aren") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
                 )
 
                 OutlinedTextField(
                     value = priceStr,
                     onValueChange = { priceStr = it },
-                    label = { Text("Harga (Rp)") },
+                    label = { Text("Harga Jual (Rp)") },
+                    placeholder = { Text("Contoh: 15000") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
                 )
 
                 // Category selection
-                Text("Kategori:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("Kategori Menu:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -342,10 +396,10 @@ fun AddProductDialog(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .clickable { category = cat },
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -357,7 +411,7 @@ fun AddProductDialog(
                                     text = cat,
                                     fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -365,7 +419,9 @@ fun AddProductDialog(
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(
@@ -389,9 +445,11 @@ fun AddProductDialog(
                                 )
                             }
                         },
-                        enabled = name.isNotBlank() && (priceStr.toLongOrNull() ?: 0L) > 0
+                        enabled = name.isNotBlank() && (priceStr.toLongOrNull() ?: 0L) > 0,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Simpan")
+                        Text("Simpan Produk")
                     }
                 }
             }

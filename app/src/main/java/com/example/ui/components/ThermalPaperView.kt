@@ -49,8 +49,7 @@ fun ThermalPaperView(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header Store

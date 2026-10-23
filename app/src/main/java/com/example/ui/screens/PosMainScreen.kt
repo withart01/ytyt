@@ -1,9 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,12 +24,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -105,6 +113,14 @@ fun PosMainScreen(
     val completedItems by viewModel.completedItems.collectAsState()
     val isReceiptDialogOpen by viewModel.receiptDialogOpen.collectAsState()
 
+    androidx.activity.compose.BackHandler(enabled = showCartSheet || selectedNavIndex != 0 || posMode != 0) {
+        when {
+            showCartSheet -> showCartSheet = false
+            posMode != 0 -> posMode = 0
+            selectedNavIndex != 0 -> selectedNavIndex = 0
+        }
+    }
+
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -121,7 +137,7 @@ fun PosMainScreen(
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
+                tonalElevation = 8.dp,
                 modifier = Modifier.testTag("bottom_nav_bar")
             ) {
                 NavigationBarItem(
@@ -143,11 +159,11 @@ fun PosMainScreen(
                     onClick = { selectedNavIndex = 2 },
                     icon = {
                         Box {
-                            Icon(Icons.Default.Print, contentDescription = "Printer BT")
+                            Icon(Icons.Default.Print, contentDescription = "Koneksi BT")
                             if (printerStatus is PrinterStatus.Connected) {
                                 Surface(
                                     modifier = Modifier
-                                        .size(8.dp)
+                                        .size(9.dp)
                                         .align(Alignment.TopEnd),
                                     shape = CircleShape,
                                     color = Color(0xFF16A34A)
@@ -155,8 +171,15 @@ fun PosMainScreen(
                             }
                         }
                     },
-                    label = { Text("Printer BT") },
+                    label = { Text("Koneksi BT") },
                     modifier = Modifier.testTag("nav_printer")
+                )
+                NavigationBarItem(
+                    selected = selectedNavIndex == 3,
+                    onClick = { selectedNavIndex = 3 },
+                    icon = { Icon(Icons.Default.Receipt, contentDescription = "Format Struk") },
+                    label = { Text("Format Struk") },
+                    modifier = Modifier.testTag("nav_receipt_format")
                 )
             }
         }
@@ -170,64 +193,110 @@ fun PosMainScreen(
                 0 -> {
                     // Kasir Screen (Calculator or Catalog)
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Top Header with Mode Segment & Printer status pill
+                        // Top Branding Header
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Sub-mode Segment: [ Kalkulator ] [ Katalog ]
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.height(38.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(2.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(36.dp)
                                 ) {
-                                    ModeTabButton(
-                                        text = "Kalkulator",
-                                        icon = Icons.Default.Calculate,
-                                        selected = posMode == 0,
-                                        onClick = { posMode = 0 }
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Storefront,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = storeSettings.storeName,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1
                                     )
-                                    ModeTabButton(
-                                        text = "Menu / Produk",
-                                        icon = Icons.Default.RestaurantMenu,
-                                        selected = posMode == 1,
-                                        onClick = { posMode = 1 }
+                                    Text(
+                                        text = "Kasir Aktif: ${storeSettings.cashierName}",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
 
-                            // Printer Status Pill
+                            // Dynamic Printer Status Pill
                             Surface(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(RoundedCornerShape(20.dp))
                                     .clickable { selectedNavIndex = 2 }
                                     .testTag("printer_status_pill"),
-                                shape = RoundedCornerShape(16.dp),
-                                color = if (printerStatus is PrinterStatus.Connected) Color(0xFFDCFCE7) else MaterialTheme.colorScheme.surfaceVariant
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (printerStatus is PrinterStatus.Connected) Color(0xFFDCFCE7) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = if (printerStatus is PrinterStatus.Connected) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF16A34A).copy(alpha = 0.5f)) else null
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        Icons.Default.Print,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = if (printerStatus is PrinterStatus.Connected) Color(0xFF16A34A) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .background(
+                                                color = if (printerStatus is PrinterStatus.Connected) Color(0xFF16A34A) else Color(0xFF94A3B8),
+                                                shape = CircleShape
+                                            )
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (printerStatus is PrinterStatus.Connected) "BT Aktif" else "BT Off",
+                                        text = if (printerStatus is PrinterStatus.Connected) "BT Terhubung" else "BT Off",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (printerStatus is PrinterStatus.Connected) Color(0xFF16A34A) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (printerStatus is PrinterStatus.Connected) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        // Mode Segment Pill: [ Kalkulator Kasir ] | [ Katalog Menu ]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(42.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    ModeTabButton(
+                                        text = "Kalkulator Cepat",
+                                        icon = Icons.Default.Calculate,
+                                        selected = posMode == 0,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { posMode = 0 }
+                                    )
+                                    ModeTabButton(
+                                        text = "Katalog Menu",
+                                        icon = Icons.Default.RestaurantMenu,
+                                        selected = posMode == 1,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { posMode = 1 }
                                     )
                                 }
                             }
@@ -290,11 +359,20 @@ fun PosMainScreen(
                 }
 
                 2 -> {
-                    // Printer Settings & Bluetooth Screen
-                    PrinterScreen(
+                    // Dedicated Bluetooth Printer Connection Screen (Status & Find only)
+                    PrinterConnectionScreen(
                         printerManager = viewModel.printerManager,
                         printerStatus = printerStatus,
+                        onTestPrint = { viewModel.printTestReceipt() },
+                        onShowMessage = { viewModel.showMessage(it) }
+                    )
+                }
+
+                3 -> {
+                    // Dedicated Receipt Format & Paper Settings Screen
+                    ReceiptFormatScreen(
                         storeSettings = storeSettings,
+                        printerStatus = printerStatus,
                         onUpdateStoreSettings = { viewModel.updateStoreSettings(it) },
                         onTestPrint = { viewModel.printTestReceipt() },
                         onShowMessage = { viewModel.showMessage(it) }
@@ -362,30 +440,34 @@ private fun ModeTabButton(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+        modifier = modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(11.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(11.dp),
         color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
-        tonalElevation = if (selected) 2.dp else 0.dp
+        tonalElevation = if (selected) 3.dp else 0.dp,
+        shadowElevation = if (selected) 1.dp else 0.dp
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(15.dp),
+                modifier = Modifier.size(16.dp),
                 tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = text,
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -403,67 +485,87 @@ private fun FloatingCartBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .testTag("floating_cart_bar"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        ),
+        shape = RoundedCornerShape(18.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF0F766E), // Teal dark
+                            Color(0xFF0D9488), // Teal
+                            Color(0xFF059669)  // Emerald
+                        )
+                    )
+                )
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.25f),
-                    modifier = Modifier.size(34.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.22f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "$itemCount",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
                         Text(
-                            text = "$itemCount",
-                            color = Color.White,
+                            text = "Keranjang Pesanan",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = EscPosHelper.formatRupiah(total),
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            color = Color.White
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "Struk Pesanan",
-                        fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = EscPosHelper.formatRupiah(total),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Lihat & Bayar",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    Icons.Default.Payments,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.2f),
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Bayar",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
     }

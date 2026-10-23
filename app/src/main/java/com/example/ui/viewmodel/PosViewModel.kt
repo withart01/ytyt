@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -124,7 +125,17 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
     init {
-        // Pre-fill last saved printer or connect simulated printer if available
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (productDao.getProductCount() == 0) {
+                    productDao.insertProducts(AppDatabase.getInitialSampleProducts())
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PosViewModel", "Error seeding initial products", e)
+            }
+        }
+
+        // Pre-fill last saved printer
         val savedPrinter = printerManager.getLastSavedDevice()
         if (savedPrinter != null) {
             _storeSettings.value = _storeSettings.value.copy(
@@ -467,5 +478,10 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearMessage() {
         _snackbarMessage.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        printerManager.destroy()
     }
 }
