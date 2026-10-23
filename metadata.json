@@ -1,0 +1,6 @@
+{
+  "name": "POS Kasir",
+  "description": "Kalkulator Kasir & POS modern dengan pencatatan transaksi dan cetak struk Bluetooth Thermal Printer (ESC/POS)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
