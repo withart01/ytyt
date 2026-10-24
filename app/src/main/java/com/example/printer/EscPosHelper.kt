@@ -253,6 +253,65 @@ object EscPosHelper {
     }
 
     /**
+     * Builds ESC/POS bytes for Cashier Shift / Session Closing report (Z-Report).
+     */
+    fun buildCashierSessionReportBytes(
+        settings: StoreSettings,
+        session: com.example.data.model.CashierSession,
+        totalSales: Long,
+        txCount: Int,
+        cashTotal: Long,
+        nonCashTotal: Long
+    ): ByteArray {
+        val width = if (settings.paperSize == 80) 48 else 32
+        val stream = ByteArrayOutputStream()
+
+        fun write(bytes: ByteArray) = stream.write(bytes)
+        fun writeText(text: String) = stream.write(text.toByteArray(Charsets.ISO_8859_1))
+        fun writeLine(text: String = "") {
+            writeText(text)
+            write(LF)
+        }
+
+        write(CMD_INIT)
+        write(CMD_ALIGN_CENTER)
+        write(CMD_BOLD_ON)
+        write(CMD_TEXT_SIZE_LARGE)
+        writeLine("REKAP SHIFT KASIR")
+        write(CMD_BOLD_OFF)
+        write(CMD_TEXT_SIZE_NORMAL)
+        writeLine(settings.storeName)
+        writeLine("Sesi: ${session.sessionId}")
+        writeLine("Kasir: ${session.cashierName}")
+        writeLine("Mulai: ${formatDate(session.startTime)}")
+        session.endTime?.let { writeLine("Selesai: ${formatDate(it)}") }
+        writeLine("=".repeat(width))
+
+        write(CMD_ALIGN_LEFT)
+        writeLine(formatTwoColumns("Modal Awal Laci:", formatRupiah(session.initialCash), width))
+        writeLine(formatTwoColumns("Jml Transaksi:", "$txCount Struk", width))
+        writeLine(formatTwoColumns("Penjualan Tunai:", formatRupiah(cashTotal), width))
+        writeLine(formatTwoColumns("Penjualan Non-Tunai:", formatRupiah(nonCashTotal), width))
+        writeLine("-".repeat(width))
+        write(CMD_BOLD_ON)
+        writeLine(formatTwoColumns("TOTAL OMZET SESI:", formatRupiah(totalSales), width))
+        writeLine(formatTwoColumns("TOTAL UANG FISIK LACI:", formatRupiah(session.initialCash + cashTotal), width))
+        write(CMD_BOLD_OFF)
+        writeLine("=".repeat(width))
+
+        write(CMD_ALIGN_CENTER)
+        writeLine("Status: Penyimpanan Permanen Aktif")
+        writeLine("Laporan Kasir Selesai")
+        writeLine("")
+        writeLine("")
+        writeLine("")
+        write(CMD_FEED_AND_CUT)
+
+        return stream.toByteArray()
+    }
+
+
+    /**
      * Builds clean formatted string representation for on-screen thermal paper preview.
      */
     fun buildReceiptText(

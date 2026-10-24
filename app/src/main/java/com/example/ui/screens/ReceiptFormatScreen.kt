@@ -144,7 +144,7 @@ fun ReceiptFormatScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Atur ukuran kertas, profil toko & footer struk",
+                            text = "Atur ukuran kertas & profil toko (Tersimpan Permanen)",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

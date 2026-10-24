@@ -5,9 +5,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.db.AppDatabase
 import com.example.data.model.CartItem
+import com.example.data.model.CartJsonHelper
+import com.example.data.model.CashierSession
 import com.example.data.model.ProductEntity
 import com.example.data.model.StoreSettings
 import com.example.data.model.TransactionEntity
+import com.example.data.preferences.StorePreferences
 import com.example.printer.BluetoothPrinterManager
 import com.example.printer.EscPosHelper
 import com.example.printer.PrinterStatus
@@ -29,6 +32,7 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getInstance(application)
     private val productDao = db.productDao()
     private val transactionDao = db.transactionDao()
+    private val storePrefs = StorePreferences(application)
 
     val printerManager = BluetoothPrinterManager(application)
     val printerStatus: StateFlow<PrinterStatus> = printerManager.printerStatus
@@ -93,9 +97,12 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     private var pendingOperator: String? = null
     private var isNewNumber = true
 
-    // --- Store Settings ---
-    private val _storeSettings = MutableStateFlow(StoreSettings())
+    // --- Store Settings & Cashier Shift Session ---
+    private val _storeSettings = MutableStateFlow(storePrefs.getStoreSettings())
     val storeSettings: StateFlow<StoreSettings> = _storeSettings.asStateFlow()
+
+    private val _cashierSession = MutableStateFlow(storePrefs.getCashierSession())
+    val cashierSession: StateFlow<CashierSession> = _cashierSession.asStateFlow()
 
     // --- Active Payment & Receipt State ---
     private val _paymentDialogOpen = MutableStateFlow(false)
@@ -135,13 +142,15 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Pre-fill last saved printer
+        // Pre-fill last saved printer if not yet assigned
         val savedPrinter = printerManager.getLastSavedDevice()
-        if (savedPrinter != null) {
-            _storeSettings.value = _storeSettings.value.copy(
+        if (savedPrinter != null && _storeSettings.value.selectedPrinterMac.isBlank()) {
+            val updated = _storeSettings.value.copy(
                 selectedPrinterMac = savedPrinter.address,
                 selectedPrinterName = savedPrinter.name
             )
+            _storeSettings.value = updated
+            storePrefs.saveStoreSettings(updated)
         }
     }
 
@@ -372,19 +381,21 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
             cashierName = _storeSettings.value.cashierName,
             customerName = _customerName.value,
             itemsSummary = summary,
-            itemsJson = ""
+            itemsJson = CartJsonHelper.toJson(items)
         )
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             transactionDao.insertTransaction(tx)
-            _completedTransaction.value = tx
-            _completedItems.value = items
-            _paymentDialogOpen.value = false
-            _receiptDialogOpen.value = true
-            clearCart()
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                _completedTransaction.value = tx
+                _completedItems.value = items
+                _paymentDialogOpen.value = false
+                _receiptDialogOpen.value = true
+                clearCart()
 
-            if (autoPrint) {
-                printReceipt(tx, items)
+                if (autoPrint) {
+                    printReceipt(tx, items)
+                }
             }
         }
     }
@@ -402,21 +413,21 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Product CRUD ---
     fun addNewProduct(product: ProductEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             productDao.insertProduct(product)
             showMessage("Produk '${product.name}' berhasil disimpan")
         }
     }
 
     fun updateProduct(product: ProductEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             productDao.updateProduct(product)
             showMessage("Produk diperbarui")
         }
     }
 
     fun deleteProduct(product: ProductEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             productDao.deleteProduct(product)
             showMessage("Produk dihapus")
         }
@@ -424,7 +435,7 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Transaction CRUD ---
     fun deleteTransaction(tx: TransactionEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             transactionDao.deleteTransaction(tx)
             showMessage("Transaksi ${tx.invoiceNumber} dihapus")
         }
@@ -466,10 +477,86 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- Cashier Session & Persistence Mode ---
+    fun startNewCashierSession(cashierName: String, initialCash: Long) {
+        val newSession = storePrefs.startNewSession(cashierName, initialCash)
+        _cashierSession.value = newSession
+        val updatedSettings = _storeSettings.value.copy(cashierName = cashierName)
+        _storeSettings.value = updatedSettings
+        storePrefs.saveStoreSettings(updatedSettings)
+        showMessage("Sesi kasir baru '$cashierName' dimulai. Modal awal: ${EscPosHelper.formatRupiah(initialCash)}")
+    }
+
+    fun closeCashierSession(autoPrintSummary: Boolean = true) {
+        val current = _cashierSession.value
+        val txs = transactions.value.filter { it.timestamp >= current.startTime }
+        val totalOmzet = txs.sumOf { it.grandTotal }
+        val cashTotal = txs.filter { it.paymentMethod.equals("Tunai", ignoreCase = true) }.sumOf { it.grandTotal }
+        val nonCashTotal = totalOmzet - cashTotal
+
+        val closed = storePrefs.closeSession()
+        _cashierSession.value = closed
+
+        if (autoPrintSummary) {
+            val bytes = EscPosHelper.buildCashierSessionReportBytes(
+                _storeSettings.value,
+                closed,
+                totalOmzet,
+                txs.size,
+                cashTotal,
+                nonCashTotal
+            )
+            printerManager.sendBytes(bytes) { success, msg ->
+                if (msg != null) showMessage(msg)
+            }
+        }
+        showMessage("Sesi kasir telah ditutup. Rekap shift siap dicetak.")
+    }
+
+    fun printCurrentSessionReport() {
+        val current = _cashierSession.value
+        val txs = transactions.value.filter { it.timestamp >= current.startTime }
+        val totalOmzet = txs.sumOf { it.grandTotal }
+        val cashTotal = txs.filter { it.paymentMethod.equals("Tunai", ignoreCase = true) }.sumOf { it.grandTotal }
+        val nonCashTotal = totalOmzet - cashTotal
+
+        val bytes = EscPosHelper.buildCashierSessionReportBytes(
+            _storeSettings.value,
+            current,
+            totalOmzet,
+            txs.size,
+            cashTotal,
+            nonCashTotal
+        )
+        printerManager.sendBytes(bytes) { success, msg ->
+            if (msg != null) showMessage(msg)
+        }
+    }
+
+    fun exportTransactionsText(): String {
+        val txs = transactions.value
+        val sb = StringBuilder()
+        sb.append("=== CADANGAN RIWAYAT TRANSAKSI POS KASIR ===\n")
+        sb.append("Toko: ${_storeSettings.value.storeName}\n")
+        sb.append("Tanggal Ekspor: ${EscPosHelper.formatDate(System.currentTimeMillis())}\n")
+        sb.append("Total Transaksi: ${txs.size}\n")
+        sb.append("Total Omzet: ${EscPosHelper.formatRupiah(txs.sumOf { it.grandTotal })}\n")
+        sb.append("Status Penyimpanan: Database SQLite Lokal On-Device (Aktif)\n")
+        sb.append("===========================================\n\n")
+        txs.forEachIndexed { i, tx ->
+            sb.append("${i + 1}. [${tx.invoiceNumber}] ${EscPosHelper.formatDate(tx.timestamp)}\n")
+            sb.append("   Kasir: ${tx.cashierName} | Pelanggan: ${tx.customerName.ifBlank { "-" }}\n")
+            sb.append("   Item: ${tx.itemsSummary}\n")
+            sb.append("   Metode: ${tx.paymentMethod} | Total: ${EscPosHelper.formatRupiah(tx.grandTotal)}\n\n")
+        }
+        return sb.toString()
+    }
+
     // --- Settings ---
     fun updateStoreSettings(newSettings: StoreSettings) {
         _storeSettings.value = newSettings
-        showMessage("Pengaturan toko disimpan")
+        storePrefs.saveStoreSettings(newSettings)
+        showMessage("Pengaturan toko disimpan permanen di perangkat")
     }
 
     fun showMessage(msg: String) {

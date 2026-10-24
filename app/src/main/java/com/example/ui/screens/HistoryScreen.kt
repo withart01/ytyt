@@ -18,10 +18,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -30,6 +33,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +50,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CartItem
+import com.example.data.model.CartJsonHelper
+import com.example.data.model.CashierSession
 import com.example.data.model.StoreSettings
 import com.example.data.model.TransactionEntity
 import com.example.printer.EscPosHelper
@@ -58,13 +64,20 @@ import java.util.Locale
 fun HistoryScreen(
     transactions: List<TransactionEntity>,
     storeSettings: StoreSettings,
+    cashierSession: CashierSession,
     printerStatus: PrinterStatus,
     onPrintDailyReport: (dateText: String, total: Long, count: Int, cash: Long, nonCash: Long) -> Unit,
     onRePrintReceipt: (TransactionEntity, List<CartItem>) -> Unit,
     onDeleteTransaction: (TransactionEntity) -> Unit,
+    onStartNewSession: (cashierName: String, initialCash: Long) -> Unit,
+    onCloseSession: () -> Unit,
+    onPrintSessionReport: () -> Unit,
+    onExportData: () -> String,
+    onShowMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTxForDetail by remember { mutableStateOf<TransactionEntity?>(null) }
+    var showSessionDialog by remember { mutableStateOf(false) }
 
     val todaySdf = remember { SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID")) }
     val todayText = remember { todaySdf.format(Date()) }
@@ -81,6 +94,64 @@ fun HistoryScreen(
             .padding(16.dp)
             .testTag("history_screen")
     ) {
+        // Storage Status & Session Bar
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { showSessionDialog = true }
+                .testTag("storage_status_bar"),
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFFF0FDF4),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF16A34A),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Mode Penyimpanan: SQLite AKTIF",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF14532D)
+                        )
+                        Text(
+                            text = "Sesi: ${cashierSession.cashierName} • ${transactions.size} transaksi tersimpan",
+                            fontSize = 10.sp,
+                            color = Color(0xFF166534)
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF16A34A)
+                ) {
+                    Text(
+                        text = "Kelola Sesi",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
         // Daily Sales Summary Card
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -163,14 +234,27 @@ fun HistoryScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        Text(
-            text = "Daftar Transaksi (${transactions.size})",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Daftar Transaksi (${transactions.size})",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = "Tersimpan Permanen",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -181,11 +265,20 @@ fun HistoryScreen(
                     .padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Belum ada transaksi tercatat",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Belum ada transaksi tercatat",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Transaksi baru akan otomatis tersimpan permanen di memori perangkat ini.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
         } else {
             LazyColumn(
@@ -197,7 +290,7 @@ fun HistoryScreen(
                         transaction = tx,
                         onClick = { selectedTxForDetail = tx },
                         onPrint = {
-                            val items = parseItemsSummaryToCartItems(tx.itemsSummary, tx.subtotal)
+                            val items = resolveTransactionItems(tx)
                             onRePrintReceipt(tx, items)
                         },
                         onDelete = { onDeleteTransaction(tx) }
@@ -207,9 +300,10 @@ fun HistoryScreen(
         }
     }
 
+    // Detail Receipt Dialog
     if (selectedTxForDetail != null) {
         val tx = selectedTxForDetail!!
-        val items = parseItemsSummaryToCartItems(tx.itemsSummary, tx.subtotal)
+        val items = resolveTransactionItems(tx)
         ReceiptDialog(
             transaction = tx,
             items = items,
@@ -217,6 +311,20 @@ fun HistoryScreen(
             printerStatus = printerStatus,
             onPrint = { onRePrintReceipt(tx, items) },
             onDismiss = { selectedTxForDetail = null }
+        )
+    }
+
+    // Cashier Session Management Dialog
+    if (showSessionDialog) {
+        CashierSessionDialog(
+            session = cashierSession,
+            transactions = transactions,
+            onStartNewSession = onStartNewSession,
+            onCloseSession = onCloseSession,
+            onPrintSessionReport = onPrintSessionReport,
+            onExportData = onExportData,
+            onShowMessage = onShowMessage,
+            onDismiss = { showSessionDialog = false }
         )
     }
 }
@@ -333,7 +441,18 @@ private fun TransactionItemCard(
 }
 
 /**
- * Reconstructs CartItems from summary text for re-printing.
+ * Resolves exact transaction items from persistent JSON, or falls back to summary reconstruction.
+ */
+fun resolveTransactionItems(tx: TransactionEntity): List<CartItem> {
+    if (tx.itemsJson.isNotBlank()) {
+        val decoded = CartJsonHelper.fromJson(tx.itemsJson)
+        if (decoded.isNotEmpty()) return decoded
+    }
+    return parseItemsSummaryToCartItems(tx.itemsSummary, tx.subtotal)
+}
+
+/**
+ * Fallback parser reconstructing CartItems from summary text.
  */
 fun parseItemsSummaryToCartItems(summary: String, subtotal: Long): List<CartItem> {
     if (summary.isBlank()) {
@@ -341,7 +460,6 @@ fun parseItemsSummaryToCartItems(summary: String, subtotal: Long): List<CartItem
     }
     val parts = summary.split(", ")
     return parts.mapNotNull { part ->
-        // e.g. "Nasi Goreng (2x)"
         val match = Regex("""^(.*)\s*\((\d+)x\)$""").find(part.trim())
         if (match != null) {
             val name = match.groupValues[1]

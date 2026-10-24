@@ -77,12 +77,14 @@ fun PosMainScreen(
     var selectedNavIndex by remember { mutableIntStateOf(0) } // 0: Kasir, 1: Riwayat, 2: Printer
     var posMode by remember { mutableIntStateOf(0) } // 0: Kalkulator, 1: Katalog Menu
     var showCartSheet by remember { mutableStateOf(false) }
+    var showSessionDialogFromTopBar by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
     val printerStatus by viewModel.printerStatus.collectAsState()
     val storeSettings by viewModel.storeSettings.collectAsState()
+    val cashierSession by viewModel.cashierSession.collectAsState()
 
     // Cart states
     val cartItems by viewModel.cartItems.collectAsState()
@@ -201,7 +203,13 @@ fun PosMainScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { showSessionDialogFromTopBar = true }
+                                    .padding(vertical = 2.dp)
+                            ) {
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
                                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -225,11 +233,20 @@ fun PosMainScreen(
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1
                                     )
-                                    Text(
-                                        text = "Kasir Aktif: ${storeSettings.cashierName}",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Color(0xFF16A34A),
+                                            modifier = Modifier.size(6.dp)
+                                        ) {}
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Sesi: ${cashierSession.cashierName} (SQLite Aktif)",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFF15803D)
+                                        )
+                                    }
                                 }
                             }
 
@@ -347,6 +364,7 @@ fun PosMainScreen(
                     HistoryScreen(
                         transactions = transactions,
                         storeSettings = storeSettings,
+                        cashierSession = cashierSession,
                         printerStatus = printerStatus,
                         onPrintDailyReport = { dateText, total, count, cash, nonCash ->
                             viewModel.printDailyReport(dateText, total, count, cash, nonCash)
@@ -354,7 +372,20 @@ fun PosMainScreen(
                         onRePrintReceipt = { tx, items ->
                             viewModel.printReceipt(tx, items)
                         },
-                        onDeleteTransaction = { viewModel.deleteTransaction(it) }
+                        onDeleteTransaction = { viewModel.deleteTransaction(it) },
+                        onStartNewSession = { cashier, initialCash ->
+                            viewModel.startNewCashierSession(cashier, initialCash)
+                        },
+                        onCloseSession = {
+                            viewModel.closeCashierSession(autoPrintSummary = true)
+                        },
+                        onPrintSessionReport = {
+                            viewModel.printCurrentSessionReport()
+                        },
+                        onExportData = {
+                            viewModel.exportTransactionsText()
+                        },
+                        onShowMessage = { viewModel.showMessage(it) }
                     )
                 }
 
@@ -431,6 +462,28 @@ fun PosMainScreen(
                 viewModel.printReceipt(completedTransaction!!, completedItems)
             },
             onDismiss = { viewModel.closeReceiptDialog() }
+        )
+    }
+
+    // Cashier Session Dialog from Top Bar
+    if (showSessionDialogFromTopBar) {
+        CashierSessionDialog(
+            session = cashierSession,
+            transactions = transactions,
+            onStartNewSession = { cashier, initialCash ->
+                viewModel.startNewCashierSession(cashier, initialCash)
+            },
+            onCloseSession = {
+                viewModel.closeCashierSession(autoPrintSummary = true)
+            },
+            onPrintSessionReport = {
+                viewModel.printCurrentSessionReport()
+            },
+            onExportData = {
+                viewModel.exportTransactionsText()
+            },
+            onShowMessage = { viewModel.showMessage(it) },
+            onDismiss = { showSessionDialogFromTopBar = false }
         )
     }
 }
