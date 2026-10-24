@@ -2,8 +2,10 @@ package com.example.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.data.model.AuthUser
 import com.example.data.model.CashierSession
 import com.example.data.model.StoreSettings
+import com.example.data.model.UserRole
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,6 +37,12 @@ class StorePreferences(context: Context) {
         private const val KEY_SESSION_INITIAL_CASH = "session_initial_cash"
         private const val KEY_SESSION_IS_ACTIVE = "session_is_active"
         private const val KEY_STORAGE_MODE_ENABLED = "persistent_storage_enabled"
+
+        // Auth keys
+        private const val KEY_AUTH_ROLE = "auth_role"
+        private const val KEY_AUTH_USERNAME = "auth_username"
+        private const val KEY_AUTH_DISPLAY_NAME = "auth_display_name"
+        private const val KEY_AUTH_LOGIN_TIME = "auth_login_time"
     }
 
     private val prefs: SharedPreferences =
@@ -123,6 +131,42 @@ class StorePreferences(context: Context) {
     fun setStorageModeEnabled(enabled: Boolean) {
         prefs.edit()
             .putBoolean(KEY_STORAGE_MODE_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getAuthUser(): AuthUser? {
+        val roleStr = prefs.getString(KEY_AUTH_ROLE, null) ?: return null
+        val role = try {
+            UserRole.valueOf(roleStr)
+        } catch (e: Exception) {
+            return null
+        }
+        val username = prefs.getString(KEY_AUTH_USERNAME, "") ?: ""
+        val displayName = prefs.getString(KEY_AUTH_DISPLAY_NAME, "") ?: ""
+        val loginTime = prefs.getLong(KEY_AUTH_LOGIN_TIME, System.currentTimeMillis())
+        return AuthUser(
+            role = role,
+            username = username,
+            displayName = displayName,
+            loginTime = loginTime
+        )
+    }
+
+    fun saveAuthUser(user: AuthUser) {
+        prefs.edit()
+            .putString(KEY_AUTH_ROLE, user.role.name)
+            .putString(KEY_AUTH_USERNAME, user.username)
+            .putString(KEY_AUTH_DISPLAY_NAME, user.displayName)
+            .putLong(KEY_AUTH_LOGIN_TIME, user.loginTime)
+            .apply()
+    }
+
+    fun clearAuthUser() {
+        prefs.edit()
+            .remove(KEY_AUTH_ROLE)
+            .remove(KEY_AUTH_USERNAME)
+            .remove(KEY_AUTH_DISPLAY_NAME)
+            .remove(KEY_AUTH_LOGIN_TIME)
             .apply()
     }
 

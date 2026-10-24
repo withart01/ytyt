@@ -75,6 +75,7 @@ fun CatalogScreen(
     onSearchQueryChange: (String) -> Unit,
     onAddToCart: (ProductEntity) -> Unit,
     onAddNewProduct: (ProductEntity) -> Unit,
+    canAddProduct: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -184,17 +185,19 @@ fun CatalogScreen(
             }
         }
 
-        // Floating Button to Add Product
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 76.dp, end = 16.dp)
-                .testTag("add_product_fab"),
-            containerColor = MaterialTheme.colorScheme.secondary,
-            contentColor = Color.White
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Tambah Menu")
+        // Floating Button to Add Product (Only when permitted, e.g., Admin)
+        if (canAddProduct) {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 76.dp, end = 16.dp)
+                    .testTag("add_product_fab"),
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Tambah Menu")
+            }
         }
     }
 

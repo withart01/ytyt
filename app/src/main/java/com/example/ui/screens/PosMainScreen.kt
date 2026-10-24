@@ -24,21 +24,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -115,6 +120,30 @@ fun PosMainScreen(
     val completedItems by viewModel.completedItems.collectAsState()
     val isReceiptDialogOpen by viewModel.receiptDialogOpen.collectAsState()
 
+    // Auth & Session Role
+    val currentAuthUser by viewModel.currentAuthUser.collectAsState()
+    val isAdmin = currentAuthUser?.isAdmin == true
+
+    // Show Login / Session startup gate if not authenticated
+    if (currentAuthUser == null) {
+        LoginSessionScreen(
+            storeName = storeSettings.storeName,
+            onLoginCashier = { name, initialCash ->
+                viewModel.loginCashier(name, initialCash)
+            },
+            onLoginAdmin = { user, pass ->
+                viewModel.loginAdmin(user, pass)
+            },
+            modifier = modifier
+        )
+        return
+    }
+
+    // Role-based navigation safety: Kasir can only access tab 0 (Kasir) & 1 (Riwayat)
+    if (!isAdmin && selectedNavIndex > 1) {
+        selectedNavIndex = 0
+    }
+
     androidx.activity.compose.BackHandler(enabled = showCartSheet || selectedNavIndex != 0 || posMode != 0) {
         when {
             showCartSheet -> showCartSheet = false
@@ -156,33 +185,42 @@ fun PosMainScreen(
                     label = { Text("Riwayat") },
                     modifier = Modifier.testTag("nav_history")
                 )
-                NavigationBarItem(
-                    selected = selectedNavIndex == 2,
-                    onClick = { selectedNavIndex = 2 },
-                    icon = {
-                        Box {
-                            Icon(Icons.Default.Print, contentDescription = "Koneksi BT")
-                            if (printerStatus is PrinterStatus.Connected) {
-                                Surface(
-                                    modifier = Modifier
-                                        .size(9.dp)
-                                        .align(Alignment.TopEnd),
-                                    shape = CircleShape,
-                                    color = Color(0xFF16A34A)
-                                ) {}
+                if (isAdmin) {
+                    NavigationBarItem(
+                        selected = selectedNavIndex == 2,
+                        onClick = { selectedNavIndex = 2 },
+                        icon = {
+                            Box {
+                                Icon(Icons.Default.Print, contentDescription = "Koneksi BT")
+                                if (printerStatus is PrinterStatus.Connected) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(9.dp)
+                                            .align(Alignment.TopEnd),
+                                        shape = CircleShape,
+                                        color = Color(0xFF16A34A)
+                                    ) {}
+                                }
                             }
-                        }
-                    },
-                    label = { Text("Koneksi BT") },
-                    modifier = Modifier.testTag("nav_printer")
-                )
-                NavigationBarItem(
-                    selected = selectedNavIndex == 3,
-                    onClick = { selectedNavIndex = 3 },
-                    icon = { Icon(Icons.Default.Receipt, contentDescription = "Format Struk") },
-                    label = { Text("Format Struk") },
-                    modifier = Modifier.testTag("nav_receipt_format")
-                )
+                        },
+                        label = { Text("Koneksi BT") },
+                        modifier = Modifier.testTag("nav_printer")
+                    )
+                    NavigationBarItem(
+                        selected = selectedNavIndex == 3,
+                        onClick = { selectedNavIndex = 3 },
+                        icon = { Icon(Icons.Default.Receipt, contentDescription = "Format Struk") },
+                        label = { Text("Format Struk") },
+                        modifier = Modifier.testTag("nav_receipt_format")
+                    )
+                    NavigationBarItem(
+                        selected = selectedNavIndex == 4,
+                        onClick = { selectedNavIndex = 4 },
+                        icon = { Icon(Icons.Default.Storage, contentDescription = "Kelola DB") },
+                        label = { Text("Kelola DB") },
+                        modifier = Modifier.testTag("nav_admin_db")
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -212,14 +250,14 @@ fun PosMainScreen(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    color = if (isAdmin) Color(0xFFFEF3C7) else MaterialTheme.colorScheme.primaryContainer,
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            Icons.Default.Storefront,
+                                            if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Storefront,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
+                                            tint = if (isAdmin) Color(0xFFD97706) else MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -236,48 +274,74 @@ fun PosMainScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Surface(
                                             shape = CircleShape,
-                                            color = Color(0xFF16A34A),
+                                            color = if (isAdmin) Color(0xFFD97706) else Color(0xFF16A34A),
                                             modifier = Modifier.size(6.dp)
                                         ) {}
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "Sesi: ${cashierSession.cashierName} (SQLite Aktif)",
+                                            text = if (isAdmin) "Super User (Admin)" else "Sesi: ${currentAuthUser?.displayName ?: cashierSession.cashierName}",
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF15803D)
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (isAdmin) Color(0xFFB45309) else Color(0xFF15803D)
                                         )
                                     }
                                 }
                             }
 
-                            // Dynamic Printer Status Pill
-                            Surface(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .clickable { selectedNavIndex = 2 }
-                                    .testTag("printer_status_pill"),
-                                shape = RoundedCornerShape(20.dp),
-                                color = if (printerStatus is PrinterStatus.Connected) Color(0xFFDCFCE7) else MaterialTheme.colorScheme.surfaceVariant,
-                                border = if (printerStatus is PrinterStatus.Connected) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF16A34A).copy(alpha = 0.5f)) else null
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Dynamic Printer Status Pill
+                                Surface(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .clickable {
+                                            if (isAdmin) {
+                                                selectedNavIndex = 2
+                                            } else {
+                                                val statusStr = if (printerStatus is PrinterStatus.Connected) "Terhubung" else "Belum Terhubung"
+                                                viewModel.showMessage("Status Printer: $statusStr (Khusus Admin)")
+                                            }
+                                        }
+                                        .testTag("printer_status_pill"),
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (printerStatus is PrinterStatus.Connected) Color(0xFFDCFCE7) else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = if (printerStatus is PrinterStatus.Connected) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF16A34A).copy(alpha = 0.5f)) else null
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(7.dp)
-                                            .background(
-                                                color = if (printerStatus is PrinterStatus.Connected) Color(0xFF16A34A) else Color(0xFF94A3B8),
-                                                shape = CircleShape
-                                            )
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (printerStatus is PrinterStatus.Connected) "BT Terhubung" else "BT Off",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (printerStatus is PrinterStatus.Connected) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(7.dp)
+                                                .background(
+                                                    color = if (printerStatus is PrinterStatus.Connected) Color(0xFF16A34A) else Color(0xFF94A3B8),
+                                                    shape = CircleShape
+                                                )
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = if (printerStatus is PrinterStatus.Connected) "BT On" else "BT Off",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (printerStatus is PrinterStatus.Connected) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(6.dp))
+
+                                // Logout / Ganti Sesi Icon Button
+                                IconButton(
+                                    onClick = { viewModel.logout() },
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .testTag("btn_logout_topbar")
+                                ) {
+                                    Icon(
+                                        Icons.Default.ExitToApp,
+                                        contentDescription = "Keluar / Ganti Sesi",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
@@ -344,6 +408,7 @@ fun PosMainScreen(
                                 onSearchQueryChange = { viewModel.updateSearchQuery(it) },
                                 onAddToCart = { viewModel.addToCart(it) },
                                 onAddNewProduct = { viewModel.addNewProduct(it) },
+                                canAddProduct = isAdmin,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -390,24 +455,46 @@ fun PosMainScreen(
                 }
 
                 2 -> {
-                    // Dedicated Bluetooth Printer Connection Screen (Status & Find only)
-                    PrinterConnectionScreen(
-                        printerManager = viewModel.printerManager,
-                        printerStatus = printerStatus,
-                        onTestPrint = { viewModel.printTestReceipt() },
-                        onShowMessage = { viewModel.showMessage(it) }
-                    )
+                    // Dedicated Bluetooth Printer Connection Screen (Status & Find only - Admin)
+                    if (isAdmin) {
+                        PrinterConnectionScreen(
+                            printerManager = viewModel.printerManager,
+                            printerStatus = printerStatus,
+                            onTestPrint = { viewModel.printTestReceipt() },
+                            onShowMessage = { viewModel.showMessage(it) }
+                        )
+                    }
                 }
 
                 3 -> {
-                    // Dedicated Receipt Format & Paper Settings Screen
-                    ReceiptFormatScreen(
-                        storeSettings = storeSettings,
-                        printerStatus = printerStatus,
-                        onUpdateStoreSettings = { viewModel.updateStoreSettings(it) },
-                        onTestPrint = { viewModel.printTestReceipt() },
-                        onShowMessage = { viewModel.showMessage(it) }
-                    )
+                    // Dedicated Receipt Format & Paper Settings Screen (Admin)
+                    if (isAdmin) {
+                        ReceiptFormatScreen(
+                            storeSettings = storeSettings,
+                            printerStatus = printerStatus,
+                            onUpdateStoreSettings = { viewModel.updateStoreSettings(it) },
+                            onTestPrint = { viewModel.printTestReceipt() },
+                            onShowMessage = { viewModel.showMessage(it) }
+                        )
+                    }
+                }
+
+                4 -> {
+                    // Dedicated Admin Database Screen (Admin Super User)
+                    if (isAdmin) {
+                        val allProducts by viewModel.products.collectAsState()
+                        AdminDatabaseScreen(
+                            products = allProducts,
+                            transactionCount = transactions.size,
+                            onAddNewProduct = { viewModel.addNewProduct(it) },
+                            onUpdateProduct = { viewModel.updateProduct(it) },
+                            onDeleteProduct = { viewModel.deleteProduct(it) },
+                            onResetDefaultProducts = { viewModel.resetProductsToDefault() },
+                            onClearAllTransactions = { viewModel.clearAllTransactionsData() },
+                            onExportTransactions = { viewModel.exportTransactionsText() },
+                            onShowMessage = { viewModel.showMessage(it) }
+                        )
+                    }
                 }
             }
         }

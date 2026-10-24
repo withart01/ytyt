@@ -4,12 +4,14 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.db.AppDatabase
+import com.example.data.model.AuthUser
 import com.example.data.model.CartItem
 import com.example.data.model.CartJsonHelper
 import com.example.data.model.CashierSession
 import com.example.data.model.ProductEntity
 import com.example.data.model.StoreSettings
 import com.example.data.model.TransactionEntity
+import com.example.data.model.UserRole
 import com.example.data.preferences.StorePreferences
 import com.example.printer.BluetoothPrinterManager
 import com.example.printer.EscPosHelper
@@ -96,6 +98,10 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOperand: Long = 0L
     private var pendingOperator: String? = null
     private var isNewNumber = true
+
+    // --- Auth & Role Management ---
+    private val _currentAuthUser = MutableStateFlow<AuthUser?>(null)
+    val currentAuthUser: StateFlow<AuthUser?> = _currentAuthUser.asStateFlow()
 
     // --- Store Settings & Cashier Shift Session ---
     private val _storeSettings = MutableStateFlow(storePrefs.getStoreSettings())
@@ -550,6 +556,62 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
             sb.append("   Metode: ${tx.paymentMethod} | Total: ${EscPosHelper.formatRupiah(tx.grandTotal)}\n\n")
         }
         return sb.toString()
+    }
+
+    // --- Auth Login & Role Switch Actions ---
+    fun loginAdmin(username: String, pass: String): Boolean {
+        if (username.trim().equals("admin", ignoreCase = true) && pass.trim() == "1234") {
+            val user = AuthUser(
+                role = UserRole.ADMIN,
+                username = "admin",
+                displayName = "Admin (Super User)",
+                loginTime = System.currentTimeMillis()
+            )
+            _currentAuthUser.value = user
+            storePrefs.saveAuthUser(user)
+            showMessage("Login Super User berhasil. Akses penuh terbuka.")
+            return true
+        } else {
+            showMessage("Login Gagal: Akun atau password salah! (admin / 1234)")
+            return false
+        }
+    }
+
+    fun loginCashier(cashierName: String, initialCash: Long): Boolean {
+        val cleanName = if (cashierName.isBlank()) "Kasir 1" else cashierName.trim()
+        val user = AuthUser(
+            role = UserRole.KASIR,
+            username = cleanName.lowercase().replace("\\s+".toRegex(), ""),
+            displayName = cleanName,
+            loginTime = System.currentTimeMillis()
+        )
+        startNewCashierSession(cleanName, initialCash)
+        _currentAuthUser.value = user
+        storePrefs.saveAuthUser(user)
+        showMessage("Sesi Kasir dibuka: $cleanName")
+        return true
+    }
+
+    fun logout() {
+        _currentAuthUser.value = null
+        storePrefs.clearAuthUser()
+        showMessage("Sesi telah keluar. Silakan pilih akun untuk masuk kembali.")
+    }
+
+    // --- Admin Database Management ---
+    fun resetProductsToDefault() {
+        viewModelScope.launch(Dispatchers.IO) {
+            productDao.clearAllProducts()
+            productDao.insertProducts(AppDatabase.getInitialSampleProducts())
+            showMessage("Katalog produk direset ke data bawaan (14 produk)")
+        }
+    }
+
+    fun clearAllTransactionsData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            transactionDao.clearAll()
+            showMessage("Seluruh riwayat transaksi di database telah dibersihkan")
+        }
     }
 
     // --- Settings ---
