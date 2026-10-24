@@ -73,7 +73,7 @@ fun ReceiptFormatScreen(
     // Live preview settings reflecting current inputs
     val previewSettings = remember(storeName, address, phone, footerMsg, cashierName, paperSize) {
         StoreSettings(
-            storeName = storeName.ifBlank { "NAMA TOKO KASIR" },
+            storeName = storeName.ifBlank { "PT SARASA FOOD" },
             address = address,
             phone = phone,
             footerMessage = footerMsg,
@@ -288,7 +288,7 @@ fun ReceiptFormatScreen(
                     value = footerMsg,
                     onValueChange = { footerMsg = it },
                     label = { Text("Pesan Penutup Struk (Footer)") },
-                    placeholder = { Text("Contoh: Terima kasih atas kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar.") },
+                    placeholder = { Text("Contoh: Terima kasih Yaa!\nBarang yang dibeli Semoga Puas.") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 4,
                     shape = RoundedCornerShape(12.dp)
@@ -297,7 +297,7 @@ fun ReceiptFormatScreen(
                 Button(
                     onClick = {
                         val updated = storeSettings.copy(
-                            storeName = storeName.trim().ifBlank { "KASIR KITA POS" },
+                            storeName = storeName.trim().ifBlank { "PT SARASA FOOD" },
                             address = address.trim(),
                             phone = phone.trim(),
                             footerMessage = footerMsg.trim(),

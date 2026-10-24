@@ -45,7 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         fun getInitialSampleProducts(): List<ProductEntity> = listOf(
-            ProductEntity(name = "Kopi Susu Gula Aren", category = "Minuman", price = 18000, stock = 50, colorHex = "#78350F"),
+            ProductEntity(name = "Kopi Susu Gula Aren", category = "Minuman", price = 12000, stock = 50, colorHex = "#78350F"),
             ProductEntity(name = "Es Teh Manis", category = "Minuman", price = 5000, stock = 100, colorHex = "#B45309"),
             ProductEntity(name = "Matcha Latte", category = "Minuman", price = 22000, stock = 30, colorHex = "#15803D"),
             ProductEntity(name = "Es Jeruk Peras", category = "Minuman", price = 7000, stock = 60, colorHex = "#EA580C"),
