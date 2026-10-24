@@ -137,7 +137,7 @@ fun PosMainScreen(
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
+                tonalElevation = 2.dp,
                 modifier = Modifier.testTag("bottom_nav_bar")
             ) {
                 NavigationBarItem(
@@ -484,26 +484,18 @@ private fun FloatingCartBar(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .testTag("floating_cart_bar"),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF0F766E), // Teal dark
-                            Color(0xFF0D9488), // Teal
-                            Color(0xFF059669)  // Emerald
-                        )
-                    )
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .background(Color(0xFF0F766E))
+                .padding(horizontal = 14.dp, vertical = 9.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -513,29 +505,29 @@ private fun FloatingCartBar(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.22f),
-                        modifier = Modifier.size(38.dp)
+                        color = Color(0xFF134E4A),
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = "$itemCount",
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 14.sp
+                                fontSize = 13.sp
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = "Keranjang Pesanan",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 10.sp,
+                            color = Color(0xFF99F6E4),
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = EscPosHelper.formatRupiah(total),
-                            fontSize = 17.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -543,18 +535,18 @@ private fun FloatingCartBar(
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF134E4A),
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "Bayar",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = Color.White
                         )
                         Spacer(modifier = Modifier.width(4.dp))

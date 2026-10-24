@@ -215,30 +215,30 @@ private fun ProductGridItem(
     inCartCount: Int,
     onAdd: () -> Unit
 ) {
-    val categoryColor = when (product.category.lowercase()) {
-        "makanan" -> Color(0xFFDC2626) // Red/Rose
-        "minuman" -> Color(0xFF0F766E) // Teal
-        "snack" -> Color(0xFFD97706)   // Amber
-        "paket" -> Color(0xFF7C3AED)   // Violet
-        else -> Color(0xFF475569)      // Slate
+    val (categoryBg, categoryText) = when (product.category.lowercase()) {
+        "makanan" -> Color(0xFFFEE2E2) to Color(0xFFDC2626)
+        "minuman" -> Color(0xFFCCFBF1) to Color(0xFF0F766E)
+        "snack" -> Color(0xFFFEF3C7) to Color(0xFFD97706)
+        "paket" -> Color(0xFFEDE9FE) to Color(0xFF7C3AED)
+        else -> Color(0xFFF1F5F9) to Color(0xFF475569)
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onAdd)
             .border(
                 width = 1.dp,
-                color = if (inCartCount > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(16.dp)
+                color = if (inCartCount > 0) Color(0xFF0F766E) else Color(0xFFE2E8F0),
+                shape = RoundedCornerShape(12.dp)
             )
             .testTag("product_item_${product.id}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Column(
@@ -248,15 +248,15 @@ private fun ProductGridItem(
             ) {
                 // Top Category Pill
                 Surface(
-                    color = categoryColor.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(6.dp)
+                    color = categoryBg,
+                    shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
                         text = product.category,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = categoryColor
+                        color = categoryText
                     )
                 }
 

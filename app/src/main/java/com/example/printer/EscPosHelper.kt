@@ -24,15 +24,20 @@ object EscPosHelper {
     val CMD_FEED_AND_CUT = byteArrayOf(0x1D, 0x56, 0x41, 0x10)
     val LF = byteArrayOf(0x0A)
 
+    private val localeId = Locale("id", "ID")
+    private val rupiahFormat = NumberFormat.getCurrencyInstance(localeId).apply {
+        maximumFractionDigits = 0
+    }
+    private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", localeId)
+
+    @Synchronized
     fun formatRupiah(amount: Long): String {
-        val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
-        format.maximumFractionDigits = 0
-        return format.format(amount).replace("Rp", "Rp ")
+        return rupiahFormat.format(amount).replace("Rp", "Rp ")
     }
 
+    @Synchronized
     fun formatDate(timestamp: Long): String {
-        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("id", "ID"))
-        return sdf.format(Date(timestamp))
+        return dateFormat.format(Date(timestamp))
     }
 
     /**
