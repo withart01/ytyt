@@ -80,32 +80,38 @@ object EscPosHelper {
         // 1. Initialize printer
         write(CMD_INIT)
 
-        // 2. Header (Store Name centered, large & bold)
+        // 2. Header (Store Name centered, font size according to settings)
         write(CMD_ALIGN_CENTER)
         write(CMD_BOLD_ON)
-        write(CMD_TEXT_SIZE_LARGE)
+        when (settings.headerFontSize) {
+            "SEDANG" -> write(CMD_TEXT_SIZE_TALL)
+            "NORMAL" -> write(CMD_TEXT_SIZE_NORMAL)
+            else -> write(CMD_TEXT_SIZE_LARGE)
+        }
         writeLine(settings.storeName)
 
         write(CMD_BOLD_OFF)
         write(CMD_TEXT_SIZE_NORMAL)
-        if (settings.address.isNotBlank()) writeLine(settings.address)
-        if (settings.phone.isNotBlank()) writeLine("Telp: ${settings.phone}")
+        if (settings.showAddress && settings.address.isNotBlank()) writeLine(settings.address)
+        if (settings.showPhone && settings.phone.isNotBlank()) writeLine("Telp: ${settings.phone}")
         writeLine("-".repeat(width))
 
         // 3. Metadata (No. Struk, Kasir, Tanggal)
         write(CMD_ALIGN_LEFT)
         writeLine("No: ${transaction.invoiceNumber}")
-        writeLine("Tgl: ${formatDate(transaction.timestamp)}")
-        val cashierInfo = "Kasir: ${transaction.cashierName}"
+        if (settings.showDateTime) writeLine("Tgl: ${formatDate(transaction.timestamp)}")
+        val cashierInfo = if (settings.showCashier) "Kasir: ${transaction.cashierName}" else ""
         val customerInfo = if (transaction.customerName.isNotBlank()) "Plg: ${transaction.customerName}" else ""
-        if (customerInfo.isNotBlank()) {
+        if (cashierInfo.isNotBlank() && customerInfo.isNotBlank()) {
             writeLine(formatTwoColumns(cashierInfo, customerInfo, width))
-        } else {
+        } else if (cashierInfo.isNotBlank()) {
             writeLine(cashierInfo)
+        } else if (customerInfo.isNotBlank()) {
+            writeLine(customerInfo)
         }
         writeLine("-".repeat(width))
 
-        // 4. Itemized list
+        // 4. Itemized list (Value Product - Protected)
         items.forEach { item ->
             writeLine(item.name)
             val qtyPrice = "  ${item.quantity}x @${formatRupiah(item.price)}"
@@ -117,7 +123,7 @@ object EscPosHelper {
         }
         writeLine("-".repeat(width))
 
-        // 5. Totals
+        // 5. Totals (Value Product - Protected)
         write(CMD_ALIGN_LEFT)
         writeLine(formatTwoColumns("Subtotal:", formatRupiah(transaction.subtotal), width))
 
@@ -141,10 +147,12 @@ object EscPosHelper {
         }
         writeLine("-".repeat(width))
 
-        // 6. Footer Note
-        write(CMD_ALIGN_CENTER)
-        settings.footerMessage.lines().forEach { line ->
-            if (line.isNotBlank()) writeLine(line)
+        // 6. Footer Note (if enabled)
+        if (settings.showFooter && settings.footerMessage.isNotBlank()) {
+            write(CMD_ALIGN_CENTER)
+            settings.footerMessage.lines().forEach { line ->
+                if (line.isNotBlank()) writeLine(line)
+            }
         }
 
         // 7. Feed paper so receipt can be cut/torn
@@ -328,13 +336,13 @@ object EscPosHelper {
         }
 
         center(settings.storeName.uppercase())
-        if (settings.address.isNotBlank()) center(settings.address)
-        if (settings.phone.isNotBlank()) center("Telp: ${settings.phone}")
+        if (settings.showAddress && settings.address.isNotBlank()) center(settings.address)
+        if (settings.showPhone && settings.phone.isNotBlank()) center("Telp: ${settings.phone}")
         sb.append("-".repeat(width)).append("\n")
 
         sb.append("No: ${transaction.invoiceNumber}").append("\n")
-        sb.append("Tgl: ${formatDate(transaction.timestamp)}").append("\n")
-        sb.append("Kasir: ${transaction.cashierName}").append("\n")
+        if (settings.showDateTime) sb.append("Tgl: ${formatDate(transaction.timestamp)}").append("\n")
+        if (settings.showCashier) sb.append("Kasir: ${transaction.cashierName}").append("\n")
         if (transaction.customerName.isNotBlank()) {
             sb.append("Pelanggan: ${transaction.customerName}").append("\n")
         }
@@ -362,8 +370,10 @@ object EscPosHelper {
         }
         sb.append("-".repeat(width)).append("\n")
 
-        settings.footerMessage.lines().forEach { line ->
-            if (line.isNotBlank()) center(line)
+        if (settings.showFooter && settings.footerMessage.isNotBlank()) {
+            settings.footerMessage.lines().forEach { line ->
+                if (line.isNotBlank()) center(line)
+            }
         }
 
         return sb.toString()

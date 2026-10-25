@@ -53,16 +53,22 @@ fun ThermalPaperView(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header Store
+            val (headerFontSize, headerFontWeight) = when (settings.headerFontSize) {
+                "SEDANG" -> Pair(15.sp, FontWeight.Bold)
+                "NORMAL" -> Pair(13.sp, FontWeight.SemiBold)
+                else -> Pair(19.sp, FontWeight.Bold) // "BESAR"
+            }
+
             Text(
                 text = settings.storeName.uppercase(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
+                fontWeight = headerFontWeight,
+                fontSize = headerFontSize,
                 fontFamily = FontFamily.Monospace,
                 color = Color(0xFF1E293B),
                 textAlign = TextAlign.Center
             )
 
-            if (settings.address.isNotBlank()) {
+            if (settings.showAddress && settings.address.isNotBlank()) {
                 Text(
                     text = settings.address,
                     fontSize = 12.sp,
@@ -73,7 +79,7 @@ fun ThermalPaperView(
                 )
             }
 
-            if (settings.phone.isNotBlank()) {
+            if (settings.showPhone && settings.phone.isNotBlank()) {
                 Text(
                     text = "Telp: ${settings.phone}",
                     fontSize = 12.sp,
@@ -87,8 +93,12 @@ fun ThermalPaperView(
 
             // Metadata
             ReceiptRow("No. Struk", transaction.invoiceNumber)
-            ReceiptRow("Tanggal", EscPosHelper.formatDate(transaction.timestamp))
-            ReceiptRow("Kasir", transaction.cashierName)
+            if (settings.showDateTime) {
+                ReceiptRow("Tanggal", EscPosHelper.formatDate(transaction.timestamp))
+            }
+            if (settings.showCashier) {
+                ReceiptRow("Kasir", transaction.cashierName)
+            }
             if (transaction.customerName.isNotBlank()) {
                 ReceiptRow("Pelanggan", transaction.customerName)
             }
@@ -146,19 +156,20 @@ fun ThermalPaperView(
                 ReceiptRow("Kembalian", EscPosHelper.formatRupiah(transaction.changeAmount), isTotal = true)
             }
 
-            DashedReceiptDivider()
-
             // Footer
-            settings.footerMessage.lines().forEach { line ->
-                if (line.isNotBlank()) {
-                    Text(
-                        text = line,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        color = Color(0xFF475569),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 1.dp)
-                    )
+            if (settings.showFooter && settings.footerMessage.isNotBlank()) {
+                DashedReceiptDivider()
+                settings.footerMessage.lines().forEach { line ->
+                    if (line.isNotBlank()) {
+                        Text(
+                            text = line,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = Color(0xFF475569),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 1.dp)
+                        )
+                    }
                 }
             }
         }

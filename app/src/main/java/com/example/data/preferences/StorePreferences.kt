@@ -30,6 +30,14 @@ class StorePreferences(context: Context) {
         private const val KEY_PRINTER_MAC = "selected_printer_mac"
         private const val KEY_PRINTER_NAME = "selected_printer_name"
 
+        // Template row toggles & font size keys
+        private const val KEY_HEADER_FONT_SIZE = "header_font_size"
+        private const val KEY_SHOW_ADDRESS = "show_address"
+        private const val KEY_SHOW_PHONE = "show_phone"
+        private const val KEY_SHOW_CASHIER = "show_cashier"
+        private const val KEY_SHOW_DATETIME = "show_datetime"
+        private const val KEY_SHOW_FOOTER = "show_footer"
+
         // Session keys
         private const val KEY_SESSION_ID = "session_id"
         private const val KEY_SESSION_CASHIER = "session_cashier"
@@ -50,7 +58,7 @@ class StorePreferences(context: Context) {
 
     fun getStoreSettings(): StoreSettings {
         return StoreSettings(
-            storeName = prefs.getString(KEY_STORE_NAME, "KASIR KITA POS") ?: "KASIR KITA POS",
+            storeName = prefs.getString(KEY_STORE_NAME, "PT SARASA FOOD") ?: "PT SARASA FOOD",
             address = prefs.getString(KEY_ADDRESS, "Jl. Sudirman No. 128, Indonesia") ?: "Jl. Sudirman No. 128, Indonesia",
             phone = prefs.getString(KEY_PHONE, "0812-3456-7890") ?: "0812-3456-7890",
             footerMessage = prefs.getString(
@@ -60,7 +68,13 @@ class StorePreferences(context: Context) {
             paperSize = prefs.getInt(KEY_PAPER_SIZE, 58),
             cashierName = prefs.getString(KEY_CASHIER_NAME, "Kasir 1") ?: "Kasir 1",
             selectedPrinterMac = prefs.getString(KEY_PRINTER_MAC, "") ?: "",
-            selectedPrinterName = prefs.getString(KEY_PRINTER_NAME, "") ?: ""
+            selectedPrinterName = prefs.getString(KEY_PRINTER_NAME, "") ?: "",
+            headerFontSize = prefs.getString(KEY_HEADER_FONT_SIZE, "BESAR") ?: "BESAR",
+            showAddress = prefs.getBoolean(KEY_SHOW_ADDRESS, true),
+            showPhone = prefs.getBoolean(KEY_SHOW_PHONE, true),
+            showCashier = prefs.getBoolean(KEY_SHOW_CASHIER, true),
+            showDateTime = prefs.getBoolean(KEY_SHOW_DATETIME, true),
+            showFooter = prefs.getBoolean(KEY_SHOW_FOOTER, true)
         )
     }
 
@@ -74,6 +88,12 @@ class StorePreferences(context: Context) {
             .putString(KEY_CASHIER_NAME, settings.cashierName)
             .putString(KEY_PRINTER_MAC, settings.selectedPrinterMac)
             .putString(KEY_PRINTER_NAME, settings.selectedPrinterName)
+            .putString(KEY_HEADER_FONT_SIZE, settings.headerFontSize)
+            .putBoolean(KEY_SHOW_ADDRESS, settings.showAddress)
+            .putBoolean(KEY_SHOW_PHONE, settings.showPhone)
+            .putBoolean(KEY_SHOW_CASHIER, settings.showCashier)
+            .putBoolean(KEY_SHOW_DATETIME, settings.showDateTime)
+            .putBoolean(KEY_SHOW_FOOTER, settings.showFooter)
             .apply()
     }
 
